@@ -173,3 +173,5 @@ local-embeddings/
 
 # Keep curated evaluation datasets
 # and prompt templates tracked in Git.
+
+.fake
