@@ -1,0 +1,175 @@
+
+# ==========================================
+# Steepwise - Git Ignore
+# ==========================================
+
+# ------------------------------------------
+# Environment Variables & Secrets
+# ------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials.json
+
+# ------------------------------------------
+# Java / Spring Boot
+# ------------------------------------------
+*.class
+*.log
+*.hprof
+hs_err_pid*
+replay_pid*
+
+# Compiled Java archives
+*.jar
+*.war
+*.ear
+
+# Spring Boot local configuration
+application-local.yml
+application-local.yaml
+application-local.properties
+application-secrets.yml
+application-secrets.yaml
+application-secrets.properties
+
+# ------------------------------------------
+# Gradle (Groovy DSL)
+# ------------------------------------------
+.gradle/
+**/build/
+!**/src/**/build/
+
+# Keep Gradle Wrapper files tracked
+!gradle/wrapper/gradle-wrapper.jar
+!backend/gradle/wrapper/gradle-wrapper.jar
+
+# ------------------------------------------
+# React / TypeScript / Vite
+# ------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+coverage/
+.vite/
+*.tsbuildinfo
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------
+# Docker
+# ------------------------------------------
+docker-compose.override.yml
+compose.override.yml
+*.pid
+
+# Local Docker data directories
+postgres_data/
+pgdata/
+docker-data/
+
+# ------------------------------------------
+# PostgreSQL
+# ------------------------------------------
+*.sql.gz
+*.dump
+*.backup
+*.bak
+*.sqlite
+*.sqlite3
+
+# IMPORTANT:
+# Flyway SQL migrations are NOT ignored.
+# backend/src/main/resources/db/migration/
+# must be committed to Git.
+
+# ------------------------------------------
+# IntelliJ IDEA
+# ------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# ------------------------------------------
+# Visual Studio Code
+# ------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ------------------------------------------
+# Eclipse / STS
+# ------------------------------------------
+.project
+.classpath
+.settings/
+.springBeans
+.sts4-cache/
+
+# ------------------------------------------
+# macOS
+# ------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ------------------------------------------
+# Windows
+# ------------------------------------------
+Thumbs.db
+Thumbs.db:encryptable
+Desktop.ini
+$RECYCLE.BIN/
+
+# ------------------------------------------
+# Linux
+# ------------------------------------------
+*~
+.nfs*
+
+# ------------------------------------------
+# Temporary Files
+# ------------------------------------------
+*.tmp
+*.temp
+*.swp
+*.swo
+*.orig
+*.rej
+
+.cache/
+tmp/
+temp/
+
+# ------------------------------------------
+# Testing
+# ------------------------------------------
+test-results/
+playwright-report/
+playwright/.cache/
+
+# ------------------------------------------
+# AI / LLM Development
+# ------------------------------------------
+.ai-cache/
+llm-logs/
+ai-debug-output/
+local-embeddings/
+
+# Keep curated evaluation datasets
+# and prompt templates tracked in Git.
