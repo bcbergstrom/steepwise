@@ -8,6 +8,7 @@ services:
       STEEPWISE_PUBLIC_URL: https://steepai.app
       STEEPWISE_MAIL_FROM: sign-in@steepai.app
       SERVER_SERVLET_SESSION_COOKIE_SECURE: "true"
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
 
   frontend:
     build:
