@@ -52,7 +52,14 @@ function Journal() {
     },
   });
   const add = useMutation({
-    mutationFn: async (entry: TeaDraft) => { if (springAuth) return addSpringEntry(entry); const { error } = await supabase.from("tea_entries").insert({ ...entry, user_id: user.id }); if (error) throw error; },
+    mutationFn: async (entry: TeaDraft) => {
+      if (springAuth) return addSpringEntry(entry);
+      const { name, type, temp, steep_time, notes } = entry;
+      const { error } = await supabase.from("tea_entries").insert({
+        name, type, temp, steep_time, notes, rating: 4, user_id: user.id,
+      });
+      if (error) throw error;
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["entries", user.id] }); },
     onError: (e: Error) => toast.error(e.message),
   });

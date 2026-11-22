@@ -17,9 +17,9 @@ export const Route = createFileRoute("/journal-preview")({
 function JournalPreview() {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<TeaEntry[]>([
-    { id: "sample-green", name: "Sencha", type: "Green", temp: "80°C", steep_time: "2 min", rating: 4, notes: "Fresh grass, a little sweetness, a clean finish.", brewed_on: "Sample cup" },
-    { id: "sample-oolong", name: "Tie Guan Yin", type: "Oolong", temp: "90°C", steep_time: "3 min", rating: 5, notes: "Soft orchid notes with a lingering honey finish.", brewed_on: "Sample cup" },
-    { id: "sample-black", name: "Darjeeling", type: "Black", temp: "95°C", steep_time: "3 min", rating: 4, notes: "Light, floral, and gently fruity.", brewed_on: "Sample cup" },
+    { id: "sample-green", name: "Sencha", type: "Green", temp: "80°C", steep_time: "2 min", steep_count: 1, notes: "Fresh grass, a little sweetness, a clean finish.", brewed_on: "Sample cup" },
+    { id: "sample-oolong", name: "Tie Guan Yin", type: "Oolong", temp: "90°C", steep_time: "3 min", steep_count: 2, notes: "Soft orchid notes with a lingering honey finish.", brewed_on: "Sample cup" },
+    { id: "sample-black", name: "Darjeeling", type: "Black", temp: "95°C", steep_time: "3 min", steep_count: 1, notes: "Light, floral, and gently fruity.", brewed_on: "Sample cup" },
   ]);
   return <JournalView name="Preview" list={entries} teas={[
     { id: "preview-sencha", name: "Sencha", type: "Green", origin_country: "Japan", quantity_stored: "100 g", recommended_temp_min: 70, recommended_temp_max: 80, notes: "Deep green needle-shaped leaves with a fresh grassy aroma." },

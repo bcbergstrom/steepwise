@@ -91,7 +91,8 @@ public class JournalController {
         @NotBlank @Size(max = 100) String type,
         @NotNull @Size(max = 100) String temp,
         @JsonProperty("steep_time") @NotNull @Size(max = 100) String steepTime,
-        @NotNull @Min(1) @Max(5) Integer rating,
+        @Min(1) @Max(5) Integer rating,
+        @JsonProperty("steep_count") @Min(1) Integer steepCount,
         @NotNull @Size(max = 5000) String notes
     ) {}
 

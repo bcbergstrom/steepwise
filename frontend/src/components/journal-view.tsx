@@ -1,11 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { quantityInGrams, recommendedTemperature, type SavedTea } from "@/lib/selected-tea";
 export type { SavedTea } from "@/lib/selected-tea";
 
 export const TYPES = ["Green", "Black", "Oolong", "White", "Pu-erh", "Herbal"];
-export const blank = { name: "", type: "Green", temp: "", steep_time: "", rating: 4, notes: "" };
-export type TeaDraft = typeof blank;
+const blank = { name: "", type: "Green", temp: "", steep_time: "", notes: "" };
+export type TeaDraft = typeof blank & { steep_count?: number | null };
 export type TeaEntry = TeaDraft & { id: string; brewed_on: string };
 
 export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLabel, pending = false, loading = false, teasLoading = false, teasError = false, headerActions }: {
@@ -15,6 +15,9 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
   const [filter, setFilter] = useState("All");
   const [f, setF] = useState(blank);
   const [teaId, setTeaId] = useState("");
+  const [steepCount, setSteepCount] = useState("");
+  const [showPrompts, setShowPrompts] = useState(false);
+  const notes = useRef<HTMLTextAreaElement>(null);
   const selectedTea = teas.find((tea) => tea.id === teaId);
   const recommendedTemp = selectedTea ? recommendedTemperature(selectedTea) : null;
   const shown = filter === "All" ? list : list.filter((e) => e.type === filter);
@@ -33,7 +36,20 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
         </div>
       </header>
       <main className="mx-auto grid max-w-5xl gap-10 px-6 pb-20 md:grid-cols-[320px_1fr]">
-        <form onSubmit={(ev) => { ev.preventDefault(); if (selectedTea) { onAdd({ ...f, name: selectedTea.name, type: selectedTea.type, temp: "" }); setF(blank); setTeaId(""); } }} className="h-fit space-y-3 rounded-lg border border-border bg-card p-6">
+        <form onSubmit={(event) => {
+          event.preventDefault();
+          if (!selectedTea || pending) return;
+          onAdd({
+            ...f,
+            name: selectedTea.name,
+            type: selectedTea.type,
+            ...(steepCount && { steep_count: Number(steepCount) }),
+          });
+          setF(blank);
+          setTeaId("");
+          setSteepCount("");
+          setShowPrompts(false);
+        }} className="h-fit space-y-3 rounded-lg border border-border bg-card p-6">
           <h2 className="font-serif text-2xl">New entry</h2>
           <label className="block text-sm">Tea
             <select required className={`${input} mt-2 min-w-0`} value={teaId} disabled={teasLoading || teasError || !teas.length} onChange={(e) => setTeaId(e.target.value)}>
@@ -63,16 +79,30 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
               </dl>
             </section>
           )}
-          <div>
-            <input className={input} placeholder="Steep time" value={f.steep_time} onChange={(e) => setF({ ...f, steep_time: e.target.value })} />
-          </div>
-          <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Button type="button" key={n} aria-label={`${n} leaves`} onClick={() => setF({ ...f, rating: n })}
-                variant="ghost" size="icon" className={`text-xl ${n <= f.rating ? "text-primary" : "text-border"}`}>❦</Button>
-            ))}
-          </div>
-          <textarea className={input} rows={3} placeholder="Tasting notes" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
+          <label className="block text-sm">Steep temperature
+            <input className={`${input} mt-2`} placeholder="e.g. 85°C" maxLength={100}
+              value={f.temp} onChange={(event) => setF({ ...f, temp: event.target.value })} />
+          </label>
+          <label className="block text-sm">Number of steeps
+            <input className={`${input} mt-2`} type="number" inputMode="numeric" min={1} max={2147483647} step={1}
+              value={steepCount} onChange={(event) => setSteepCount(event.target.value)} />
+          </label>
+          <label className="block text-sm">Steep time
+            <input className={`${input} mt-2`} placeholder="e.g. 30 seconds" maxLength={100}
+              value={f.steep_time} onChange={(event) => setF({ ...f, steep_time: event.target.value })} />
+          </label>
+          <label className="block text-sm">Flavor notes
+            <textarea ref={notes} className={`${input} mt-2`} rows={3} maxLength={5000}
+              value={f.notes} aria-describedby={showPrompts ? "flavor-prompts" : undefined}
+              onChange={(event) => setF({ ...f, notes: event.target.value })} />
+          </label>
+          <Button type="button" variant="outline" className="w-full" aria-expanded={showPrompts} onClick={() => {
+            setShowPrompts(!showPrompts);
+            if (!showPrompts) notes.current?.focus();
+          }}>Describe notes</Button>
+          {showPrompts && <p id="flavor-prompts" className="text-sm text-muted-foreground">
+            What did you notice first? Try describing the aroma, flavor, texture, and aftertaste. Did they change across steeps?
+          </p>}
           <Button disabled={pending || !selectedTea || teasLoading || teasError} className="w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Add to journal</Button>
         </form>
         <section>
@@ -91,8 +121,9 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="rounded-full bg-accent/30 px-2 py-0.5 text-accent-foreground">{e.type}</span>
-                  {e.temp && <span>{e.temp}</span>}{e.steep_time && <span>· {e.steep_time}</span>}
-                  <span className="text-primary">{"❦".repeat(e.rating)}</span>
+                  {e.temp && <span>{e.temp}</span>}
+                  {e.steep_count != null && <span>{e.steep_count} {e.steep_count === 1 ? "steep" : "steeps"}</span>}
+                  {e.steep_time && <span>{e.steep_time}</span>}
                 </div>
                 {e.notes && <p className="mt-3 font-serif text-lg italic text-foreground/80">“{e.notes}”</p>}
                 <Button onClick={() => onRemove(e.id)}
