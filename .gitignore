@@ -81,6 +81,8 @@ docker-data/
 # ------------------------------------------
 # PostgreSQL
 # ------------------------------------------
+steepwise-accounts.csv
+steepwise-journal.csv
 *.sql.gz
 *.dump
 *.backup
@@ -151,6 +153,9 @@ $RECYCLE.BIN/
 *.swo
 *.orig
 *.rej
+
+# Local export of the original frontend
+/frontend/quiet-steep-tea-journal.zip
 
 .cache/
 tmp/

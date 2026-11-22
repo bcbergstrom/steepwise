@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1795200148524,
+      "tag": "0000_profiles_and_tea_entries",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795284690938,
+      "tag": "0001_create_tea_collection",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795285524392,
+      "tag": "0002_tea_recommended_temperature",
+      "breakpoints": true
+    }
+  ]
+}

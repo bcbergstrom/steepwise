@@ -1,0 +1,11 @@
+- [x] Add forgot-password request and recovery page.
+- [x] Add isolated temporary journal preview.
+- [x] Verify reset-request acceptance, invalid-link handling, preview add/filter/remove, mobile layout, and tests. Email delivery and a real recovery-link password change remain unverified.
+- [x] Add private tea upload section with required name/type and optional origin, harvest, quantity, and notes.
+- [x] Fix sign-out contrast.
+- [x] Test field rules and signed-in tea saving, refresh persistence, removal, and mobile layout.
+- [x] Move tea uploads to a dedicated protected page and verify journal navigation, saved tea details after refresh, and signed-out access protection.
+- [x] Replace new-entry tea fields with saved-tea dropdown and verify an uploaded tea can be selected, logged, and read back after refresh.
+- [x] Add optional recommended Celsius temperature range capped at 100°C; verified saved range after refresh, rejected 101°C, and confirmed database constraint.
+- [x] Show selected tea details beside entry inputs; tested temperature averages and absent ranges, verified signed-in saved details after refresh, selection clearing/switching, and desktop/mobile fit.
+- [x] Replace password sign-in with email links, collect email and username at signup, and disable Google/Lovable; tests, desktop/mobile pages, a real email-link request, and verified-session return to the journal passed. Inbox delivery and clicking the emailed link remain unverified.

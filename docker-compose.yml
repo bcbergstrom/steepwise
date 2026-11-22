@@ -39,6 +39,17 @@ services:
 
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      STEEPWISE_PUBLIC_URL: ${STEEPWISE_PUBLIC_URL:-http://localhost:5173}
+      STEEPWISE_MAIL_FROM: ${STEEPWISE_MAIL_FROM:-}
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: ${STEEPWISE_SECURE_COOKIE:-false}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-localhost}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-25}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_SMTP_AUTH:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_STARTTLS:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: ${SPRING_MAIL_STARTTLS:-false}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-steepwise}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-steepwise}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
@@ -59,21 +70,36 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_SPRING_AUTH: ${STEEPWISE_SPRING_AUTH:-false}
+      secrets:
+        - frontend_env
 
     container_name: steepwise-frontend
     restart: unless-stopped
 
-    environment:
-      VITE_API_URL: http://localhost:8080/api/v1
-
-    ports:
-      - "127.0.0.1:5173:5173"
-
-    depends_on:
-      - backend
+    env_file:
+      - ./frontend/.env
 
     networks:
       - steepwise-network
+
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - steepwise-network
+
+secrets:
+  frontend_env:
+    file: ./frontend/.env
 
 volumes:
   postgres_data:
