@@ -101,6 +101,8 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
           if (trackInventory && (!Number.isFinite(weight) || weight <= 0)) return;
           const entry: TeaDraft = {
             ...f,
+            temp: f.temp ? f.temp + "°C" : "",
+            steep_time: f.steep_time ? f.steep_time + " seconds" : "",
             name: selectedTea.name,
             type: selectedTea.type,
             ...(steepCount && { steep_count: Number(steepCount) }),
@@ -170,16 +172,18 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
               <p id="brewed-weight-help" className="mt-1 text-xs text-muted-foreground">Enter the total dry tea used for this tasting.</p>
             </div>
           )}
-          <label className="block text-sm">Steep temperature
-            <input className={`${input} mt-2`} placeholder="e.g. 85°C" maxLength={100}
+          <label className="block text-sm">Steep temperature (°C)
+            <input className={`${input} mt-2`} inputMode="decimal" placeholder="e.g. 85" maxLength={90}
+              pattern="(?:[0-9]{1,2}(?:\.[0-9]+)?|100(?:\.0+)?)" title="Enter a number from 0 to 100 in Celsius."
               value={f.temp} onChange={(event) => setF({ ...f, temp: event.target.value })} />
           </label>
           <label className="block text-sm">Number of steeps
             <input className={`${input} mt-2`} type="number" inputMode="numeric" min={1} max={2147483647} step={1}
               value={steepCount} onChange={(event) => setSteepCount(event.target.value)} />
           </label>
-          <label className="block text-sm">Steep time
-            <input className={`${input} mt-2`} placeholder="e.g. 30 seconds" maxLength={100}
+          <label className="block text-sm">Steep time (seconds)
+            <input className={`${input} mt-2`} inputMode="decimal" placeholder="e.g. 30" maxLength={90}
+              pattern="(?:[1-9][0-9]*(?:\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)" title="Enter a number greater than zero in seconds."
               value={f.steep_time} onChange={(event) => setF({ ...f, steep_time: event.target.value })} />
           </label>
           <label className="block text-sm">Flavor notes

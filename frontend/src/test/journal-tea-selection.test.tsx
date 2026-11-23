@@ -8,9 +8,9 @@ describe("journal tea selection", () => {
     const onAdd = vi.fn(() => true);
     render(<JournalView name="Tester" list={[]} teas={[{ id: "saved-oolong", name: "Uploaded oolong", type: "Oolong" }]} onAdd={onAdd} onRemove={vi.fn()} onExit={vi.fn()} exitLabel="Sign out" />);
     fireEvent.change(screen.getByRole("combobox", { name: "Tea" }), { target: { value: "saved-oolong" } });
-    fireEvent.change(screen.getByRole("textbox", { name: "Steep temperature" }), { target: { value: "85°C" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Steep temperature (°C)" }), { target: { value: "85" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Number of steeps" }), { target: { value: "3" } });
-    fireEvent.change(screen.getByRole("textbox", { name: "Steep time" }), { target: { value: "30 seconds" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Steep time (seconds)" }), { target: { value: "30" } });
     fireEvent.click(screen.getByRole("button", { name: "Describe notes" }));
     expect(screen.getByText(/aroma, flavor, texture, and aftertaste/)).toBeTruthy();
     expect(onAdd).not.toHaveBeenCalled();
@@ -71,6 +71,21 @@ describe("journal tea selection", () => {
     expect(screen.queryByRole("button", { name: "Blackberry blend" })).toBeNull();
     expect(screen.getByRole("button", { name: "All types" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("heading", { name: "Sencha" })).toBeTruthy();
+  });
+
+  it("rejects other units and out-of-range steeping values", () => {
+    render(<JournalView name="Tester" list={[]} teas={[]} onAdd={vi.fn()} onRemove={vi.fn()} onExit={vi.fn()} exitLabel="Sign out" />);
+    const temp = screen.getByRole<HTMLInputElement>("textbox", { name: "Steep temperature (°C)" });
+    const time = screen.getByRole<HTMLInputElement>("textbox", { name: "Steep time (seconds)" });
+
+    for (const [field, invalid, valid] of [[temp, ["200°F", "101"], "85.5"], [time, ["2 min", "0"], "0.5"]] as const) {
+      for (const value of invalid) {
+        fireEvent.change(field, { target: { value } });
+        expect(field.checkValidity()).toBe(false);
+      }
+      fireEvent.change(field, { target: { value: valid } });
+      expect(field.checkValidity()).toBe(true);
+    }
   });
 
   it("cannot add an entry without a saved tea selection", () => {

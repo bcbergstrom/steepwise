@@ -155,8 +155,14 @@ public class JournalController {
     public record Entry(
         @NotBlank @Size(max = 200) String name,
         @NotBlank @Size(max = 100) String type,
-        @NotNull @Size(max = 100) String temp,
-        @JsonProperty("steep_time") @NotNull @Size(max = 100) String steepTime,
+        @NotNull @Size(max = 100)
+        @jakarta.validation.constraints.Pattern(
+            regexp = "(?:(?:[0-9]{1,2}(?:\\.[0-9]+)?|100(?:\\.0+)?)\\s*°?[Cc])?",
+            message = "Steep temperature must be between 0 and 100°C") String temp,
+        @JsonProperty("steep_time") @NotNull @Size(max = 100)
+        @jakarta.validation.constraints.Pattern(
+            regexp = "(?:(?:[1-9][0-9]*(?:\\.[0-9]+)?|0\\.[0-9]*[1-9][0-9]*)\\s*(?:s|seconds?))?",
+            message = "Steep time must be greater than zero and expressed in seconds") String steepTime,
         @Min(1) @Max(5) Integer rating,
         @JsonProperty("steep_count") @Min(1) Integer steepCount,
         @NotNull @Size(max = 5000) String notes,
