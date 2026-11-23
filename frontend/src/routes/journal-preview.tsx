@@ -41,7 +41,8 @@ function JournalPreview() {
       setTeas((current) => current.map((item) =>
         item.id === tea.id ? { ...item, quantity_stored: `${remaining} g` } : item,
       ));
-      const saved = { ...entry, id: crypto.randomUUID(), brewed_on: new Date().toLocaleDateString() };
+      const submittedAt = new Date().toISOString();
+      const saved = { ...entry, id: crypto.randomUUID(), brewed_on: submittedAt, created_at: submittedAt };
       setEntries((current) => [saved, ...current]);
       return true;
     }}

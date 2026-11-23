@@ -39,6 +39,18 @@ describe("journal tea selection", () => {
     expect(notes.value).toBe("Orchid leads, with honey lingering on the finish.");
   });
 
+  it("displays the submission timestamp in local time", () => {
+    const submittedAt = new Date(2026, 10, 23, 9, 41);
+    const list = [{
+      id: "saved-entry", name: "Oolong", type: "Oolong", temp: "", steep_time: "", notes: "",
+      brewed_on: "2026-11-22", created_at: submittedAt.toISOString(),
+    }];
+    render(<JournalView name="Tester" list={list} teas={[]} onAdd={vi.fn()} onRemove={vi.fn()} onExit={vi.fn()} exitLabel="Sign out" />);
+
+    const expected = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(submittedAt);
+    expect(screen.getByText(expected).getAttribute("datetime")).toBe(submittedAt.toISOString());
+  });
+
   it("cannot add an entry without a saved tea selection", () => {
     const onAdd = vi.fn(() => true);
     render(<JournalView name="Tester" list={[]} teas={[]} onAdd={onAdd} onRemove={vi.fn()} onExit={vi.fn()} exitLabel="Sign out" />);

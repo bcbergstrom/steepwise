@@ -1,6 +1,8 @@
 package com.steepwise.controller;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.steepwise.model.Tasting;
+import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
@@ -24,10 +26,12 @@ public class JournalController {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
+    private final EntityManager entities;
 
-    public JournalController(JdbcTemplate jdbc, ObjectMapper json) {
+    public JournalController(JdbcTemplate jdbc, ObjectMapper json, EntityManager entities) {
         this.jdbc = jdbc;
         this.json = json;
+        this.entities = entities;
     }
 
     @GetMapping("/entries")
@@ -47,11 +51,6 @@ public class JournalController {
         if ((entry.teaId() == null) != (entry.gramsBrewed() == null)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A saved tea and brewed weight are required together");
         }
-        if (entry.teaId() == null) {
-            save(principal, "entry", entry);
-            return;
-        }
-
         UUID owner = UUID.fromString(principal.getName());
         UUID entryId = entry.requestId() == null ? UUID.randomUUID() : entry.requestId();
         String details = json.writeValueAsString(entry);
@@ -70,10 +69,18 @@ public class JournalController {
             return;
         }
 
+        if (entry.teaId() != null) {
+            deductStock(owner, entry.teaId(), entry.gramsBrewed());
+        }
+        entities.persist(new Tasting(entryId, owner, entry.teaId(), entry.name(), entry.type(),
+            entry.gramsBrewed(), entry.temp(), entry.steepTime(), entry.steepCount(), entry.rating(), entry.notes()));
+    }
+
+    private void deductStock(UUID owner, UUID teaId, BigDecimal brewedGrams) {
         var stock = jdbc.query("""
             SELECT details->>'quantity_stored' FROM journal_items
             WHERE id = ? AND user_id = ? AND kind = 'collection' FOR UPDATE
-            """, (row, index) -> row.getString(1), entry.teaId(), owner);
+            """, (row, index) -> row.getString(1), teaId, owner);
         if (stock.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Saved tea unavailable");
         }
@@ -87,14 +94,14 @@ public class JournalController {
         if (weight.group(2) != null && Character.toLowerCase(weight.group(2).charAt(0)) == 'k') {
             available = available.movePointRight(3);
         }
-        BigDecimal remaining = available.subtract(entry.gramsBrewed());
+        BigDecimal remaining = available.subtract(brewedGrams);
         if (remaining.signum() < 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Not enough tea remaining");
         }
         jdbc.update("""
             UPDATE journal_items SET details = jsonb_set(details, '{quantity_stored}', to_jsonb(CAST(? AS text)))
             WHERE id = ? AND user_id = ? AND kind = 'collection'
-            """, remaining.stripTrailingZeros().toPlainString() + " g", entry.teaId(), owner);
+            """, remaining.stripTrailingZeros().toPlainString() + " g", teaId, owner);
     }
 
     @PostMapping("/collection")
@@ -123,7 +130,9 @@ public class JournalController {
     private String list(Principal principal, String kind) {
         return jdbc.queryForObject("""
             SELECT COALESCE(jsonb_agg(details || jsonb_build_object(
-                'id', id, 'brewed_on', COALESCE(details->'brewed_on', to_jsonb(created_at))
+                'id', id,
+                'created_at', created_at,
+                'brewed_on', COALESCE(details->'brewed_on', to_jsonb(created_at))
             ) ORDER BY created_at DESC, id DESC), '[]'::jsonb)::text
             FROM journal_items
             WHERE user_id = ? AND kind = ?

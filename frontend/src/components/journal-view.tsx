@@ -6,7 +6,24 @@ export type { SavedTea } from "@/lib/selected-tea";
 export const TYPES = ["Green", "Black", "Oolong", "White", "Pu-erh", "Herbal"];
 const blank = { name: "", type: "Green", temp: "", steep_time: "", notes: "" };
 export type TeaDraft = typeof blank & { steep_count?: number | null; tea_id?: string; grams_brewed?: number | null; request_id?: string };
-export type TeaEntry = TeaDraft & { id: string; brewed_on: string };
+export type TeaEntry = TeaDraft & { id: string; brewed_on: string; created_at?: string };
+
+const submissionDateFormat = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function SubmissionTime({ entry }: { entry: TeaEntry }) {
+  const timestamp = entry.created_at ?? entry.brewed_on;
+  const date = new Date(timestamp);
+  const className = "text-xs text-muted-foreground";
+
+  if (!/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(timestamp) || Number.isNaN(date.getTime())) {
+    return <span className={className}>{entry.brewed_on}</span>;
+  }
+
+  return <time className={className} dateTime={date.toISOString()}>{submissionDateFormat.format(date)}</time>;
+}
 
 export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLabel, pending = false, loading = false, teasLoading = false, teasError = false, trackInventory = true, onDescribeNotes, headerActions }: {
   name: string; list: TeaEntry[]; onAdd: (entry: TeaDraft) => boolean | Promise<boolean>; onRemove: (id: string) => void;
@@ -195,7 +212,7 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
               <li key={e.id} className="group rounded-lg border border-border bg-card p-6">
                 <div className="flex items-baseline justify-between gap-4">
                   <h3 className="font-serif text-2xl">{e.name}</h3>
-                  <span className="text-xs text-muted-foreground">{e.brewed_on}</span>
+                  <SubmissionTime entry={e} />
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="rounded-full bg-accent/30 px-2 py-0.5 text-accent-foreground">{e.type}</span>
