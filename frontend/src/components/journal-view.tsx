@@ -8,8 +8,9 @@ const blank = { name: "", type: "Green", temp: "", steep_time: "", notes: "" };
 export type TeaDraft = typeof blank & { steep_count?: number | null; tea_id?: string; grams_brewed?: number | null; request_id?: string };
 export type TeaEntry = TeaDraft & { id: string; brewed_on: string };
 
-export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLabel, pending = false, loading = false, teasLoading = false, teasError = false, trackInventory = true, headerActions }: {
+export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLabel, pending = false, loading = false, teasLoading = false, teasError = false, trackInventory = true, onDescribeNotes, headerActions }: {
   name: string; list: TeaEntry[]; onAdd: (entry: TeaDraft) => boolean | Promise<boolean>; onRemove: (id: string) => void;
+  onDescribeNotes?: (notes: string) => Promise<string>;
   teas: SavedTea[]; onExit: () => void; exitLabel: string; pending?: boolean; loading?: boolean; teasLoading?: boolean; teasError?: boolean; trackInventory?: boolean; headerActions?: ReactNode;
 }) {
   const [filter, setFilter] = useState("All");
@@ -20,11 +21,41 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
   const saving = useRef(false);
   const attemptedEntry = useRef<{ body: string; id: string } | null>(null);
   const [showPrompts, setShowPrompts] = useState(false);
+  const [description, setDescription] = useState<{ suggestion?: string; error?: string }>({});
+  const [describing, setDescribing] = useState(false);
+  const notesRevision = useRef(0);
   const notes = useRef<HTMLTextAreaElement>(null);
   const selectedTea = teas.find((tea) => tea.id === teaId);
   const recommendedTemp = selectedTea ? recommendedTemperature(selectedTea) : null;
   const shown = filter === "All" ? list : list.filter((e) => e.type === filter);
   const input = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring";
+  const updateNotes = (value: string) => {
+    notesRevision.current += 1;
+    setDescription({});
+    setF((draft) => ({ ...draft, notes: value }));
+  };
+
+  const describeNotes = async () => {
+    if (!onDescribeNotes || !f.notes.trim()) {
+      setShowPrompts(!showPrompts);
+      if (!showPrompts) notes.current?.focus();
+      return;
+    }
+    const revision = notesRevision.current;
+    setDescription({});
+    setDescribing(true);
+    try {
+      const suggestion = await onDescribeNotes(f.notes.trim());
+      if (revision === notesRevision.current) setDescription({ suggestion });
+    } catch (error) {
+      if (revision === notesRevision.current) {
+        setDescription({ error: error instanceof Error ? error.message : "AI suggestions are unavailable right now." });
+      }
+    } finally {
+      setDescribing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl flex-wrap items-end justify-between gap-6 px-6 pt-16 pb-10">
@@ -70,6 +101,8 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
             setSteepCount("");
             setGrams("");
             setShowPrompts(false);
+            notesRevision.current += 1;
+            setDescription({});
           } finally {
             saving.current = false;
           }
@@ -128,12 +161,23 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
           <label className="block text-sm">Flavor notes
             <textarea ref={notes} className={`${input} mt-2`} rows={3} maxLength={5000}
               value={f.notes} aria-describedby={showPrompts ? "flavor-prompts" : undefined}
-              onChange={(event) => setF({ ...f, notes: event.target.value })} />
+              onChange={(event) => updateNotes(event.target.value)} />
           </label>
-          <Button type="button" variant="outline" className="w-full" aria-expanded={showPrompts} onClick={() => {
-            setShowPrompts(!showPrompts);
-            if (!showPrompts) notes.current?.focus();
-          }}>Describe notes</Button>
+          <Button type="button" variant="outline" className="w-full" disabled={describing || pending}
+            aria-expanded={!onDescribeNotes || !f.notes.trim() ? showPrompts : undefined} onClick={describeNotes}>
+            {describing ? "Describing notes…" : "Describe notes"}
+          </Button>
+          {description.error && <p role="alert" className="text-sm text-destructive">{description.error}</p>}
+          {description.suggestion && (
+            <div className="space-y-2 rounded-md border border-border p-3 text-sm">
+              <p className="font-medium">AI suggestion</p>
+              <p role="status" className="whitespace-pre-wrap break-words">{description.suggestion}</p>
+              <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={() => {
+                updateNotes(description.suggestion ?? "");
+                notes.current?.focus();
+              }}>Use suggestion</Button>
+            </div>
+          )}
           {showPrompts && <p id="flavor-prompts" className="text-sm text-muted-foreground">
             What did you notice first? Try describing the aroma, flavor, texture, and aftertaste. Did they change across steeps?
           </p>}

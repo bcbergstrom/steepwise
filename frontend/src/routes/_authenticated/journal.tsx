@@ -4,7 +4,7 @@ import { JournalView, type TeaDraft } from "@/components/journal-view";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  addSpringEntry, removeSpringEntry, springAuth, springCollection, springEntries, springSignOut,
+  addSpringEntry, describeSpringNotes, removeSpringEntry, springAuth, springCollection, springEntries, springSignOut,
 } from "@/lib/spring-api";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -88,7 +88,7 @@ function Journal() {
   const list = entries.data ?? [];
   const name = "displayName" in user ? user.displayName : profile.data?.display_name ?? user.email;
 
-  return <JournalView name={name ?? "My"} list={list} teas={teas.data ?? []} teasLoading={teas.isLoading} teasError={teas.isError} trackInventory={springAuth} onAdd={async (entry) => {
+  return <JournalView name={name ?? "My"} list={list} teas={teas.data ?? []} teasLoading={teas.isLoading} teasError={teas.isError} trackInventory={springAuth} {...(springAuth && { onDescribeNotes: describeSpringNotes })} onAdd={async (entry) => {
     try {
       await add.mutateAsync(entry);
       return true;

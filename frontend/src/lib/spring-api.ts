@@ -12,13 +12,17 @@ async function read<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function write(path: string, method: "POST" | "DELETE", data?: object) {
+async function csrfRequest(path: string, method: "POST" | "DELETE", data?: object) {
   const csrf = await read<Csrf>(await fetch("/api/auth/csrf", { cache: "no-store" }));
-  const response = await fetch(path, {
+  return fetch(path, {
     method,
     headers: { "Content-Type": "application/json", [csrf.headerName]: csrf.token },
     ...(data === undefined ? {} : { body: JSON.stringify(data) }),
   });
+}
+
+async function write(path: string, method: "POST" | "DELETE", data?: object) {
+  const response = await csrfRequest(path, method, data);
   if (!response.ok) {
     if (path === "/api/journal/entries" && method === "POST" && response.status === 409) {
       throw new Error("Check the tea’s remaining weight. The tasting could not be saved.");
@@ -48,3 +52,11 @@ export const addSpringEntry = (entry: TeaDraft) => write("/api/journal/entries",
 export const addSpringTea = (tea: CollectionDraft) => write("/api/journal/collection", "POST", tea);
 export const removeSpringEntry = (id: string) => write(`/api/journal/entries/${encodeURIComponent(id)}`, "DELETE");
 export const removeSpringTea = (id: string) => write(`/api/journal/collection/${encodeURIComponent(id)}`, "DELETE");
+
+export async function describeSpringNotes(notes: string) {
+  const response = await csrfRequest("/api/journal/describe-notes", "POST", { notes });
+  if (response.status === 429) throw new Error("Please wait a moment before requesting another suggestion.");
+  if (!response.ok) throw new Error("AI suggestions are unavailable right now. You can still save your tasting notes.");
+  const { suggestion } = await read<{ suggestion: string }>(response);
+  return suggestion;
+}

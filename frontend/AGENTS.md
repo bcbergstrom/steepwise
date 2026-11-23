@@ -19,8 +19,8 @@ use the editor.
   Ask Lovable to change the schema.
 - **Generated files.** Do not edit a file whose header says it is automatically
   generated.
-- **AI gateway.** Keep model calls on Lovable's gateway, and keep
-  `LOVABLE_API_KEY` out of browser code.
+- **AI gateway.** Keep Lovable-managed model calls on Lovable's gateway, and
+  keep `LOVABLE_API_KEY` out of browser code.
 - **Connectors.** Lovable provides native connectors. `list_connectors` shows
   which are enabled; `add_connector` only returns the dashboard link. When a
   connector is enabled, calls go through the connector gateway and need
@@ -36,3 +36,4 @@ use the editor.
 - New brewed-cup entries select from the user's saved inventory and snapshot its name/type; the isolated preview uses sample tea choices.
 - Selected-tea details derive directly from the selected inventory row using the browser-safe selected-tea module; temperature recommendations average both range endpoints without changing inventory or cup data.
 - Passwordless account requests use email OTP links with account creation disabled for sign-in; signup usernames use the existing profile display-name metadata, and link callbacks return to the public auth page before journal navigation.
+- Journal flavor suggestions use the Spring backend, which calls OpenAI with a server-side `OPENAI_API_KEY`.

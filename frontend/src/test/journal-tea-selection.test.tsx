@@ -22,6 +22,23 @@ describe("journal tea selection", () => {
       tea_id: "saved-oolong", grams_brewed: 4.5, request_id: expect.any(String),
     }));
   });
+  it("keeps the original notes until the AI suggestion is accepted", async () => {
+    const onDescribeNotes = vi.fn(async () => "Orchid leads, with honey lingering on the finish.");
+    const onAdd = vi.fn(() => true);
+    render(<JournalView name="Tester" list={[]} teas={[]} onAdd={onAdd} onDescribeNotes={onDescribeNotes} onRemove={vi.fn()} onExit={vi.fn()} exitLabel="Sign out" />);
+
+    const notes = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Flavor notes" });
+    fireEvent.change(notes, { target: { value: "Orchid, honey finish" } });
+    fireEvent.click(screen.getByRole("button", { name: "Describe notes" }));
+    const useSuggestion = await screen.findByRole("button", { name: "Use suggestion" });
+
+    expect(onDescribeNotes).toHaveBeenCalledWith("Orchid, honey finish");
+    expect(notes.value).toBe("Orchid, honey finish");
+    expect(onAdd).not.toHaveBeenCalled();
+    fireEvent.click(useSuggestion);
+    expect(notes.value).toBe("Orchid leads, with honey lingering on the finish.");
+  });
+
   it("cannot add an entry without a saved tea selection", () => {
     const onAdd = vi.fn(() => true);
     render(<JournalView name="Tester" list={[]} teas={[]} onAdd={onAdd} onRemove={vi.fn()} onExit={vi.fn()} exitLabel="Sign out" />);
