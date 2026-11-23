@@ -5,17 +5,20 @@ export type { SavedTea } from "@/lib/selected-tea";
 
 export const TYPES = ["Green", "Black", "Oolong", "White", "Pu-erh", "Herbal"];
 const blank = { name: "", type: "Green", temp: "", steep_time: "", notes: "" };
-export type TeaDraft = typeof blank & { steep_count?: number | null };
+export type TeaDraft = typeof blank & { steep_count?: number | null; tea_id?: string; grams_brewed?: number | null; request_id?: string };
 export type TeaEntry = TeaDraft & { id: string; brewed_on: string };
 
-export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLabel, pending = false, loading = false, teasLoading = false, teasError = false, headerActions }: {
-  name: string; list: TeaEntry[]; onAdd: (entry: TeaDraft) => void; onRemove: (id: string) => void;
-  teas: SavedTea[]; onExit: () => void; exitLabel: string; pending?: boolean; loading?: boolean; teasLoading?: boolean; teasError?: boolean; headerActions?: ReactNode;
+export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLabel, pending = false, loading = false, teasLoading = false, teasError = false, trackInventory = true, headerActions }: {
+  name: string; list: TeaEntry[]; onAdd: (entry: TeaDraft) => boolean | Promise<boolean>; onRemove: (id: string) => void;
+  teas: SavedTea[]; onExit: () => void; exitLabel: string; pending?: boolean; loading?: boolean; teasLoading?: boolean; teasError?: boolean; trackInventory?: boolean; headerActions?: ReactNode;
 }) {
   const [filter, setFilter] = useState("All");
   const [f, setF] = useState(blank);
   const [teaId, setTeaId] = useState("");
   const [steepCount, setSteepCount] = useState("");
+  const [grams, setGrams] = useState("");
+  const saving = useRef(false);
+  const attemptedEntry = useRef<{ body: string; id: string } | null>(null);
   const [showPrompts, setShowPrompts] = useState(false);
   const notes = useRef<HTMLTextAreaElement>(null);
   const selectedTea = teas.find((tea) => tea.id === teaId);
@@ -36,21 +39,42 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
         </div>
       </header>
       <main className="mx-auto grid max-w-5xl gap-10 px-6 pb-20 md:grid-cols-[320px_1fr]">
-        <form onSubmit={(event) => {
+        <form onSubmit={async (event) => {
           event.preventDefault();
-          if (!selectedTea || pending) return;
-          onAdd({
+          if (!selectedTea || pending || saving.current) return;
+          const weight = Number(grams);
+          if (trackInventory && (!Number.isFinite(weight) || weight <= 0)) return;
+          const entry: TeaDraft = {
             ...f,
             name: selectedTea.name,
             type: selectedTea.type,
             ...(steepCount && { steep_count: Number(steepCount) }),
-          });
-          setF(blank);
-          setTeaId("");
-          setSteepCount("");
-          setShowPrompts(false);
+            ...(trackInventory && { tea_id: selectedTea.id, grams_brewed: weight }),
+          };
+
+          if (trackInventory) {
+            const body = JSON.stringify(entry);
+            if (attemptedEntry.current?.body !== body) {
+              attemptedEntry.current = { body, id: crypto.randomUUID() };
+            }
+            entry.request_id = attemptedEntry.current.id;
+          }
+
+          saving.current = true;
+          try {
+            const result = onAdd(entry);
+            if (!(typeof result === "boolean" ? result : await result)) return;
+            attemptedEntry.current = null;
+            setF(blank);
+            setTeaId("");
+            setSteepCount("");
+            setGrams("");
+            setShowPrompts(false);
+          } finally {
+            saving.current = false;
+          }
         }} className="h-fit space-y-3 rounded-lg border border-border bg-card p-6">
-          <h2 className="font-serif text-2xl">New entry</h2>
+          <h2 className="font-serif text-2xl">New Tasting Entry</h2>
           <label className="block text-sm">Tea
             <select required className={`${input} mt-2 min-w-0`} value={teaId} disabled={teasLoading || teasError || !teas.length} onChange={(e) => setTeaId(e.target.value)}>
               <option value="">{teasLoading ? "Loading teas…" : "Select a saved tea"}</option>
@@ -78,6 +102,16 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
                 ))}
               </dl>
             </section>
+          )}
+          {trackInventory && (
+            <div>
+              <label className="block text-sm">Grams of tea brewed
+                <input className={`${input} mt-2`} type="number" inputMode="decimal" min="0.001"
+                  max="999999999.999" step="0.001" required value={grams} disabled={pending}
+                  aria-describedby="brewed-weight-help" onChange={(event) => setGrams(event.target.value)} />
+              </label>
+              <p id="brewed-weight-help" className="mt-1 text-xs text-muted-foreground">Enter the total dry tea used for this tasting.</p>
+            </div>
           )}
           <label className="block text-sm">Steep temperature
             <input className={`${input} mt-2`} placeholder="e.g. 85°C" maxLength={100}
@@ -121,6 +155,7 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="rounded-full bg-accent/30 px-2 py-0.5 text-accent-foreground">{e.type}</span>
+                  {e.grams_brewed != null && <span>{e.grams_brewed} g brewed</span>}
                   {e.temp && <span>{e.temp}</span>}
                   {e.steep_count != null && <span>{e.steep_count} {e.steep_count === 1 ? "steep" : "steeps"}</span>}
                   {e.steep_time && <span>{e.steep_time}</span>}

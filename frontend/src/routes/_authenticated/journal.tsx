@@ -60,7 +60,12 @@ function Journal() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["entries", user.id] }); },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["entries", user.id] }),
+        qc.invalidateQueries({ queryKey: ["tea-collection", user.id] }),
+      ]);
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   const remove = useMutation({
@@ -83,5 +88,12 @@ function Journal() {
   const list = entries.data ?? [];
   const name = "displayName" in user ? user.displayName : profile.data?.display_name ?? user.email;
 
-  return <JournalView name={name ?? "My"} list={list} teas={teas.data ?? []} teasLoading={teas.isLoading} teasError={teas.isError} onAdd={(entry) => add.mutate(entry)} onRemove={(id) => remove.mutate(id)} onExit={signOut} exitLabel="Sign out" pending={add.isPending} loading={entries.isLoading} headerActions={<Button asChild><Link to="/tea-upload"><Plus />Tea upload</Link></Button>} />;
+  return <JournalView name={name ?? "My"} list={list} teas={teas.data ?? []} teasLoading={teas.isLoading} teasError={teas.isError} trackInventory={springAuth} onAdd={async (entry) => {
+    try {
+      await add.mutateAsync(entry);
+      return true;
+    } catch {
+      return false;
+    }
+  }} onRemove={(id) => remove.mutate(id)} onExit={signOut} exitLabel="Sign out" pending={add.isPending} loading={entries.isLoading} headerActions={<Button asChild><Link to="/tea-upload"><Plus />Tea upload</Link></Button>} />;
 }

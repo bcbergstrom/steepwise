@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
+import { stockWeightInGrams, type SavedTea } from "@/lib/selected-tea";
 import { JournalView, type TeaEntry } from "@/components/journal-view";
 
 export const Route = createFileRoute("/journal-preview")({
@@ -21,12 +23,28 @@ function JournalPreview() {
     { id: "sample-oolong", name: "Tie Guan Yin", type: "Oolong", temp: "90°C", steep_time: "3 min", steep_count: 2, notes: "Soft orchid notes with a lingering honey finish.", brewed_on: "Sample cup" },
     { id: "sample-black", name: "Darjeeling", type: "Black", temp: "95°C", steep_time: "3 min", steep_count: 1, notes: "Light, floral, and gently fruity.", brewed_on: "Sample cup" },
   ]);
-  return <JournalView name="Preview" list={entries} teas={[
+  const [teas, setTeas] = useState<SavedTea[]>([
     { id: "preview-sencha", name: "Sencha", type: "Green", origin_country: "Japan", quantity_stored: "100 g", recommended_temp_min: 70, recommended_temp_max: 80, notes: "Deep green needle-shaped leaves with a fresh grassy aroma." },
     { id: "preview-oolong", name: "Tie Guan Yin", type: "Oolong", origin_country: "China", quantity_stored: "50 g", recommended_temp_min: 85, recommended_temp_max: 95, notes: "Tightly rolled green leaves, bought from a local tea shop." },
     { id: "preview-darjeeling", name: "Darjeeling", type: "Black", origin_country: "India", quantity_stored: "75 g", recommended_temp_min: 90, recommended_temp_max: 100, notes: "Fine twisted leaves with silver tips." },
-  ]}
-    onAdd={(entry) => setEntries((current) => [{ ...entry, id: crypto.randomUUID(), brewed_on: new Date().toLocaleDateString() }, ...current])}
+  ]);
+  return <JournalView name="Preview" list={entries} teas={teas}
+    onAdd={(entry) => {
+      const tea = teas.find((item) => item.id === entry.tea_id);
+      const available = stockWeightInGrams(tea?.quantity_stored);
+      const grams = entry.grams_brewed;
+      if (!tea || available === null || grams == null || grams > available) {
+        toast.error("Check the tea’s remaining weight. The tasting could not be saved.");
+        return false;
+      }
+      const remaining = Number((available - grams).toFixed(6));
+      setTeas((current) => current.map((item) =>
+        item.id === tea.id ? { ...item, quantity_stored: `${remaining} g` } : item,
+      ));
+      const saved = { ...entry, id: crypto.randomUUID(), brewed_on: new Date().toLocaleDateString() };
+      setEntries((current) => [saved, ...current]);
+      return true;
+    }}
     onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))}
     onExit={() => navigate({ to: "/auth" })} exitLabel="Back to sign in" />;
 }

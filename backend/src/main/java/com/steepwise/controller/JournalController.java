@@ -6,8 +6,10 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
@@ -15,6 +17,10 @@ import tools.jackson.databind.ObjectMapper;
 @RestController
 @RequestMapping(value = "/api/journal", produces = "application/json")
 public class JournalController {
+
+    private static final Pattern STOCK_WEIGHT = Pattern.compile(
+        "([0-9]+(?:\\.[0-9]+)?)\\s*(g|grams?|kg|kilograms?)?", Pattern.CASE_INSENSITIVE
+    );
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
@@ -36,8 +42,59 @@ public class JournalController {
 
     @PostMapping("/entries")
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     public void addEntry(Principal principal, @Valid @RequestBody Entry entry) {
-        save(principal, "entry", entry);
+        if ((entry.teaId() == null) != (entry.gramsBrewed() == null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A saved tea and brewed weight are required together");
+        }
+        if (entry.teaId() == null) {
+            save(principal, "entry", entry);
+            return;
+        }
+
+        UUID owner = UUID.fromString(principal.getName());
+        UUID entryId = entry.requestId() == null ? UUID.randomUUID() : entry.requestId();
+        String details = json.writeValueAsString(entry);
+        int inserted = jdbc.update("""
+            INSERT INTO journal_items (id, user_id, kind, details)
+            VALUES (?, ?, 'entry', ?::jsonb) ON CONFLICT (id) DO NOTHING
+            """, entryId, owner, details);
+        if (inserted == 0) {
+            Boolean sameEntry = jdbc.queryForObject("""
+                SELECT EXISTS (SELECT 1 FROM journal_items
+                WHERE id = ? AND user_id = ? AND kind = 'entry' AND details = ?::jsonb)
+                """, Boolean.class, entryId, owner, details);
+            if (!Boolean.TRUE.equals(sameEntry)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Tasting entry request ID is already in use");
+            }
+            return;
+        }
+
+        var stock = jdbc.query("""
+            SELECT details->>'quantity_stored' FROM journal_items
+            WHERE id = ? AND user_id = ? AND kind = 'collection' FOR UPDATE
+            """, (row, index) -> row.getString(1), entry.teaId(), owner);
+        if (stock.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Saved tea unavailable");
+        }
+
+        String quantity = stock.getFirst();
+        var weight = STOCK_WEIGHT.matcher(quantity == null ? "" : quantity.strip());
+        if (!weight.matches()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Saved tea has no weight in grams or kilograms");
+        }
+        BigDecimal available = new BigDecimal(weight.group(1));
+        if (weight.group(2) != null && Character.toLowerCase(weight.group(2).charAt(0)) == 'k') {
+            available = available.movePointRight(3);
+        }
+        BigDecimal remaining = available.subtract(entry.gramsBrewed());
+        if (remaining.signum() < 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Not enough tea remaining");
+        }
+        jdbc.update("""
+            UPDATE journal_items SET details = jsonb_set(details, '{quantity_stored}', to_jsonb(CAST(? AS text)))
+            WHERE id = ? AND user_id = ? AND kind = 'collection'
+            """, remaining.stripTrailingZeros().toPlainString() + " g", entry.teaId(), owner);
     }
 
     @PostMapping("/collection")
@@ -93,7 +150,10 @@ public class JournalController {
         @JsonProperty("steep_time") @NotNull @Size(max = 100) String steepTime,
         @Min(1) @Max(5) Integer rating,
         @JsonProperty("steep_count") @Min(1) Integer steepCount,
-        @NotNull @Size(max = 5000) String notes
+        @NotNull @Size(max = 5000) String notes,
+        @JsonProperty("tea_id") UUID teaId,
+        @JsonProperty("grams_brewed") @Positive @Digits(integer = 9, fraction = 3) BigDecimal gramsBrewed,
+        @JsonProperty("request_id") UUID requestId
     ) {}
 
     public record CollectionTea(

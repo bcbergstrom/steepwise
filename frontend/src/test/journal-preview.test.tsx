@@ -16,8 +16,12 @@ describe("temporary journal preview", () => {
     if (!Component) throw new Error("Preview component is missing");
     render(<Component />);
     fireEvent.change(screen.getByRole("combobox", { name: "Tea" }), { target: { value: "preview-sencha" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Grams of tea brewed" }), { target: { value: "4.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Add to journal" }));
     expect(screen.getAllByRole("heading", { name: "Sencha" })).toHaveLength(2);
+    expect(screen.getByText("4.5 g brewed")).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Tea" }), { target: { value: "preview-sencha" } });
+    expect(screen.getByText("95.5 g")).toBeTruthy();
     expect(privateRead).not.toHaveBeenCalled();
   });
 });

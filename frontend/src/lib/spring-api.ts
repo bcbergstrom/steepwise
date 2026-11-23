@@ -20,6 +20,12 @@ async function write(path: string, method: "POST" | "DELETE", data?: object) {
     ...(data === undefined ? {} : { body: JSON.stringify(data) }),
   });
   if (!response.ok) {
+    if (path === "/api/journal/entries" && method === "POST" && response.status === 409) {
+      throw new Error("Check the tea’s remaining weight. The tasting could not be saved.");
+    }
+    if (path === "/api/journal/entries" && method === "POST" && response.status === 404) {
+      throw new Error("The selected tea is no longer available in your collection.");
+    }
     if (response.status === 503) throw new Error("Sign-in email is currently unavailable.");
     throw new Error("Steep AI could not complete that request.");
   }
