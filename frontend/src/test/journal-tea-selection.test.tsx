@@ -51,6 +51,28 @@ describe("journal tea selection", () => {
     expect(screen.getByText(expected).getAttribute("datetime")).toBe(submittedAt.toISOString());
   });
 
+  it("filters by saved tea types and groups capitalization variants together", () => {
+    const entry = { temp: "", steep_time: "", notes: "", brewed_on: "Sample cup" };
+    const list = [
+      { ...entry, id: "1", name: "First blend", type: "Blackberry blend" },
+      { ...entry, id: "2", name: "Second blend", type: "blackberry blend" },
+      { ...entry, id: "3", name: "Sencha", type: "Green" },
+    ];
+    const props = { name: "Tester", teas: [], onAdd: vi.fn(), onRemove: vi.fn(), onExit: vi.fn(), exitLabel: "Sign out" };
+    const view = render(<JournalView {...props} list={list} />);
+
+    expect(screen.queryByRole("button", { name: "Oolong" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Blackberry blend" }));
+    expect(screen.getByRole("heading", { name: "First blend" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Second blend" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Sencha" })).toBeNull();
+
+    view.rerender(<JournalView {...props} list={list.slice(2)} />);
+    expect(screen.queryByRole("button", { name: "Blackberry blend" })).toBeNull();
+    expect(screen.getByRole("button", { name: "All types" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("heading", { name: "Sencha" })).toBeTruthy();
+  });
+
   it("cannot add an entry without a saved tea selection", () => {
     const onAdd = vi.fn(() => true);
     render(<JournalView name="Tester" list={[]} teas={[]} onAdd={onAdd} onRemove={vi.fn()} onExit={vi.fn()} exitLabel="Sign out" />);

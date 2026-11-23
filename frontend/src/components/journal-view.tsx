@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { quantityInGrams, recommendedTemperature, type SavedTea } from "@/lib/selected-tea";
 export type { SavedTea } from "@/lib/selected-tea";
 
-export const TYPES = ["Green", "Black", "Oolong", "White", "Pu-erh", "Herbal"];
 const blank = { name: "", type: "Green", temp: "", steep_time: "", notes: "" };
 export type TeaDraft = typeof blank & { steep_count?: number | null; tea_id?: string; grams_brewed?: number | null; request_id?: string };
 export type TeaEntry = TeaDraft & { id: string; brewed_on: string; created_at?: string };
@@ -30,7 +29,7 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
   onDescribeNotes?: (notes: string) => Promise<string>;
   teas: SavedTea[]; onExit: () => void; exitLabel: string; pending?: boolean; loading?: boolean; teasLoading?: boolean; teasError?: boolean; trackInventory?: boolean; headerActions?: ReactNode;
 }) {
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState<string | null>(null);
   const [f, setF] = useState(blank);
   const [teaId, setTeaId] = useState("");
   const [steepCount, setSteepCount] = useState("");
@@ -44,7 +43,15 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
   const notes = useRef<HTMLTextAreaElement>(null);
   const selectedTea = teas.find((tea) => tea.id === teaId);
   const recommendedTemp = selectedTea ? recommendedTemperature(selectedTea) : null;
-  const shown = filter === "All" ? list : list.filter((e) => e.type === filter);
+  const teaTypes = new Map<string, string>();
+  for (const entry of list) {
+    const label = entry.type.trim();
+    const key = label.toLowerCase();
+    if (key && !teaTypes.has(key)) teaTypes.set(key, label);
+  }
+  const activeFilter = filter !== null && teaTypes.has(filter) ? filter : null;
+  const filters = [...teaTypes].sort(([, first], [, second]) => first.localeCompare(second));
+  const shown = activeFilter === null ? list : list.filter((entry) => entry.type.trim().toLowerCase() === activeFilter);
   const input = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring";
   const updateNotes = (value: string) => {
     notesRevision.current += 1;
@@ -201,10 +208,10 @@ export function JournalView({ name, list, teas, onAdd, onRemove, onExit, exitLab
           <Button disabled={pending || !selectedTea || teasLoading || teasError} className="w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Add to journal</Button>
         </form>
         <section>
-          <div className="mb-6 flex flex-wrap gap-2">
-            {["All", ...TYPES].map((t) => (
-              <Button key={t} onClick={() => setFilter(t)}
-                className={`rounded-full px-3 py-1 text-xs ${filter === t ? "bg-foreground text-background" : "bg-secondary text-secondary-foreground hover:bg-muted"}`}>{t}</Button>
+          <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter tastings by tea type">
+            {([[null, "All types"], ...filters] as const).map(([key, label]) => (
+              <Button key={key ?? ""} aria-pressed={activeFilter === key} onClick={() => setFilter(key)}
+                className={`rounded-full px-3 py-1 text-xs ${activeFilter === key ? "bg-foreground text-background" : "bg-secondary text-secondary-foreground hover:bg-muted"}`}>{label}</Button>
             ))}
           </div>
           <ul className="space-y-4">
